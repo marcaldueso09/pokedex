@@ -7,6 +7,7 @@ import NavPokemon from './components/NavPokemon.vue'
 const currentId = ref<number>()
 const pokeData = ref<Pokemon | null>(null)
 const loading = ref(false)
+const hollowPurple = ref(false)
 
 const fetchPokemon = async (search: string | number) => {
   loading.value = true
@@ -39,6 +40,12 @@ const handleSearch = (target: string | number) => {
   }
   fetchPokemon(target)
 }
+
+const resetToLoadingScreen = () => {
+  pokeData.value = null
+  currentId.value = undefined
+  hollowPurple.value = false
+}
 </script>
 
 <template>
@@ -48,8 +55,20 @@ const handleSearch = (target: string | number) => {
   <div id="app">
     <main>
       <h1>Pokedex</h1>
-      <GetPokemon :poke-data="pokeData" :loading="loading" @search-pokemon="handleSearch" />
-      <NavPokemon :current-id="currentId ?? 1" :loading="loading" @change-id="handleSearch" />
+      <GetPokemon
+        :poke-data="pokeData"
+        :loading="loading"
+        :hollow-purple="hollowPurple"
+        @search-pokemon="handleSearch"
+        @update:hollow-purple="hollowPurple = $event"
+      />
+      <NavPokemon
+        :current-id="currentId ?? 1"
+        :loading="loading"
+        :is-active="!!pokeData || hollowPurple"
+        @change-id="handleSearch"
+        @reset="resetToLoadingScreen"
+      />
     </main>
   </div>
 </template>

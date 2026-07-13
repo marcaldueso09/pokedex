@@ -6,43 +6,29 @@ const props = defineProps<{
   currentPokemonName: string | undefined
 }>()
 
-const evoCache = new Map<string, { past: string[]; future: string[] }>()
+const emit = defineEmits<{
+  (e: 'select', name: string): void
+}>()
 
-const pastEvolutions = ref<string[]>([])
-const futureEvolutions = ref<string[]>([])
+const evoCache = new Map<string, string[]>()
+const fullFamily = ref<string[]>([])
 const loading = ref(false)
 const error = ref('')
+const isExpanded = ref(false)
 
-function findEvolutions(
-  node: Evolutions,
-  targetName: string,
-  ancestors: string[] = [],
-): { past: string[]; future: string[] } | null {
-  const currentName = node.species.name
-
-  if (currentName === targetName) {
-    const futureList = node.evolves_to.map((child) => child.species.name)
-    return {
-      past: [...ancestors],
-      future: futureList,
-    }
-  }
-
+function flattenChain(node: Evolutions, list: string[] = []): string[] {
+  list.push(node.species.name)
   for (const nextNode of node.evolves_to) {
-    const found = findEvolutions(nextNode, targetName, [...ancestors, currentName])
-    if (found) return found
+    flattenChain(nextNode, list)
   }
-
-  return null
+  return list
 }
 
 async function loadEvolutions(name: string) {
   const cleanName = name.toLowerCase().trim()
 
   if (evoCache.has(cleanName)) {
-    const cached = evoCache.get(cleanName)!
-    pastEvolutions.value = cached.past
-    futureEvolutions.value = cached.future
+    fullFamily.value = evoCache.get(cleanName)!
     return
   }
 
@@ -57,21 +43,17 @@ async function loadEvolutions(name: string) {
     const chain = await fetch(speciesData.evolution_chain.url)
     const chainData = await chain.json()
 
-    const relation = findEvolutions(chainData.chain, cleanName)
+    const flattened = flattenChain(chainData.chain)
 
-    if (relation) {
-      pastEvolutions.value = relation.past
-      futureEvolutions.value = relation.future
-      evoCache.set(cleanName, relation)
-    }
+    fullFamily.value = flattened
+    evoCache.set(cleanName, flattened)
   } catch (err: unknown) {
     if (err instanceof Error) {
       error.value = err.message
     } else {
-      error.value = 'An unexpected error occured.'
+      error.value = 'An unexpected error occurred.'
     }
-    pastEvolutions.value = []
-    futureEvolutions.value = []
+    fullFamily.value = []
   } finally {
     loading.value = false
   }
@@ -83,8 +65,7 @@ watch(
     if (newName) {
       loadEvolutions(newName)
     } else {
-      pastEvolutions.value = []
-      futureEvolutions.value = []
+      fullFamily.value = []
     }
   },
   { immediate: true },
@@ -93,6 +74,125 @@ watch(
 
 <template>
   <div id="pokemonSpecies">
-    <span> EVL </span>
+    <button class="nokia-btn" @click="isExpanded = !isExpanded">EVL</button>
+
+    <div v-if="isExpanded" class="evo-dropdown">
+      <div v-if="loading" class="status">...</div>
+      <div v-else-if="error" class="status error">{{ error }}</div>
+      <div v-else class="evo-list">
+        <template v-for="member in fullFamily" :key="member">
+          <div
+            v-if="member !== currentPokemonName?.toLowerCase()"
+            class="evo-item clickable"
+            @click="(emit('select', member), (isExpanded = false))"
+          >
+            {{ member.toUpperCase() }}
+          </div>
+          <div v-else class="evo-item current">
+            {{ currentPokemonName?.toUpperCase() }}
+          </div>
+        </template>
+
+        <div v-if="fullFamily.length <= 1" class="status">NONE</div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+#pokemonSpecies {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.nokia-btn {
+  font-weight: 900;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  cursor: pointer;
+  border: 2px solid #100f0f;
+  border-radius: 5px;
+  box-shadow: 1.5px 1.5px rgba(60, 74, 32, 0.607);
+  background: transparent;
+}
+
+.nokia-btn:active {
+  background-color: #3f4d20b7;
+}
+
+button {
+  text-shadow: 1.5px 1.5px rgba(60, 74, 32, 0.607);
+}
+
+.evo-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background-color: rgb(167, 201, 102);
+  border: 2px solid #100f0f;
+  border-radius: 5px;
+  min-width: 120px;
+  z-index: 10;
+  box-shadow: 1.5px 1.5px rgba(60, 74, 32, 0.607);
+  max-height: 145px;
+  overflow-y: scroll;
+}
+
+.evo-list {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(167, 201, 102);
+}
+
+.evo-item {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: #100f0f;
+  text-align: center;
+  font-weight: bold;
+  background-color: rgb(167, 201, 102);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background-color: #3f4d20b7;
+}
+
+.current {
+  background-color: rgba(60, 74, 32, 0.25);
+  border-left: 3px solid #100f0f;
+  border-right: 3px solid #100f0f;
+}
+
+.status {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: #100f0f;
+  text-align: center;
+}
+
+.error {
+  color: #8b0000;
+}
+
+.evo-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.evo-dropdown::-webkit-scrollbar-track {
+  background: rgb(147, 181, 82);
+  border-left: 1px solid #100f0f;
+}
+
+.evo-dropdown::-webkit-scrollbar-thumb {
+  background: #100f0f;
+  border-radius: 0px;
+}
+</style>

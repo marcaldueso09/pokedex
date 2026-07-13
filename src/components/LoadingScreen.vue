@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 defineProps<{
   catching: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'ekansDomain'): void
 }>()
 
 const defaultBall =
@@ -15,6 +19,7 @@ const secretBall =
   'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/23.gif'
 
 const ballSrc = ref(defaultBall)
+const secretBallGame = ref(false)
 
 const masterSecret = [
   'arrowup',
@@ -48,16 +53,17 @@ const secretGame = [
   'arrowdown',
   'arrowleft',
   'arrowdown',
-  's',
   'e',
-  'c',
-  'r',
-  'e',
-  't',
-  'g',
+  'k',
   'a',
+  'n',
+  's',
+  'd',
+  'o',
   'm',
-  'e',
+  'a',
+  'i',
+  'n',
   'arrowup',
   'arrowup',
 ]
@@ -104,16 +110,33 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', readKeystrokes)
 })
+
+watch(
+  () => ballSrc.value,
+  (newSrc) => {
+    if (newSrc === secretBall) {
+      secretBallGame.value = true
+    } else {
+      secretBallGame.value = false
+    }
+  },
+  { immediate: true },
+)
+
+function triggerSecret() {
+  emit('ekansDomain')
+}
 </script>
 
 <template>
   <div id="placeholderCard">
-    <div id="phImg">
+    <div id="phImg" class="ball-frame-box">
       <img
         id="pokeball"
-        :class="{ catch: catching }"
         :src="ballSrc || defaultBall"
-        :style="ballSrc === secretBall ? { scale: 0.7 } : {}"
+        :class="{ clickable: secretBallGame, catch: catching }"
+        :style="ballSrc === secretBall ? { width: '100%', height: '100%', cursor: 'pointer' } : {}"
+        @click="secretBallGame && triggerSecret()"
       />
     </div>
   </div>
@@ -130,13 +153,25 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
+
+.ball-frame-box {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
 #pokeball {
-  transform: scale(5);
+  width: 60%;
+  height: 60%;
   image-rendering: pixelated;
   transform-origin: bottom center;
+  --base-scale: 5;
+  transform: scale(var(--base-scale));
+  object-fit: contain;
   animation: catchShake 2.75s ease-in-out infinite;
 }
-
 #pokeball.catch {
   animation: instantShine 0.525s ease-in-out forwards;
 }

@@ -12,6 +12,7 @@ export interface Pokemon {
   types: Array<{ type: { name: string } }>
   abilities: Array<{ ability: { name: string } }>
   stats: Array<{ base_stat: number; stat: { name: string } }>
+  cries: { latest: string }
 }
 
 export interface Evolutions {

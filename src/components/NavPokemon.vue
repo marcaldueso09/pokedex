@@ -2,10 +2,12 @@
 const props = defineProps<{
   currentId: number
   loading: boolean
+  isActive: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'change-id', id: number): void
+  (e: 'reset'): void
 }>()
 
 const next = () => {
@@ -22,7 +24,14 @@ const prev = () => {
 <template>
   <div id="buttons">
     <div id="power">
-      <span id="powerBtn" class="material-symbols-outlined"> power_settings_new </span>
+      <span
+        id="powerBtn"
+        class="material-symbols-outlined"
+        @click="emit('reset')"
+        :class="{ 'turned-on': isActive }"
+      >
+        power_settings_new
+      </span>
     </div>
     <div id="nav">
       <span
@@ -62,5 +71,13 @@ const prev = () => {
   padding: 0.5rem 1rem;
   border-radius: 10px;
   background-color: rgb(221, 218, 218);
+  transition: color 0.2s ease;
+}
+#powerBtn.turned-on {
+  color: #ff3838;
+  filter: drop-shadow(0 0 3px rgba(255, 56, 56, 0.6));
+  transition:
+    color 0.2s ease,
+    filter 0.2s ease;
 }
 </style>
